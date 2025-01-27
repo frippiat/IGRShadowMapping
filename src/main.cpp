@@ -74,6 +74,13 @@ bool g_appTimerStoppedP = true;
 // TODO: textures
 unsigned int g_availableTextureSlot = 0;
 
+GLuint g_albedoTex;
+unsigned int g_albedoTexGPU;
+
+GLuint g_normalTex;
+unsigned int g_normalTexGPU;
+
+
 GLuint loadTextureFromFileToGPU(const std::string &filename)
 {
   int width, height, numComponents;
@@ -296,27 +303,24 @@ struct Scene {
     }
 
     // Back-wall (with normal mapping)
-    glActiveTexture(GL_TEXTURE0); // Bind normal map texture for the plane
-    mainShader->set("useNormalMap", 1); // Enable normal mapping
     mainShader->set("material.albedo", glm::vec3(0.29, 0.51, 0.82));
+    mainShader->set("material.normalTex",(int)g_normalTexGPU); 
+    mainShader->set("material.normalTexActive",1);
+    mainShader->set("material.albedoTex",(int)g_albedoTexGPU); 
+    mainShader->set("material.albedoTexActive",1); 
     mainShader->set("modelMat", planeMat);
     mainShader->set("normMat", glm::mat3(glm::inverseTranspose(planeMat)));
     plane->render();
-    /*mainShader->set("material.albedo", glm::vec3(0.29, 0.51, 0.82)); // default value if the texture was not loaded
-    mainShader->set("modelMat", planeMat);
-    mainShader->set("normMat", glm::mat3(glm::inverseTranspose(planeMat)));
-    plane->render();
-    */
-
+    mainShader->set("material.normalTexActive",0);
+    mainShader->set("material.albedoTexActive",0); 
+    
     // floor
-    mainShader->set("useNormalMap", 0); // Disable normal mapping
     mainShader->set("material.albedo", glm::vec3(0.8, 0.8, 0.9));
     mainShader->set("modelMat", floorMat);
     mainShader->set("normMat", glm::mat3(glm::inverseTranspose(floorMat)));
     plane->render();
 
     // rhino
-    mainShader->set("useNormalMap", 0); // Disable normal mapping
     mainShader->set("material.albedo", glm::vec3(1, 0.71, 0.29));
     mainShader->set("modelMat", rhinoMat);
     mainShader->set("normMat", glm::mat3(glm::inverseTranspose(rhinoMat)));
@@ -528,11 +532,20 @@ void initScene(const std::string &meshFilename)
   }
 
   // TODO: Load and setup textures
-    GLuint normalMapTexture = loadTextureFromFileToGPU("data/normal.png");
-    glActiveTexture(GL_TEXTURE0 + g_availableTextureSlot);
-    glBindTexture(GL_TEXTURE_2D, normalMapTexture);
-    int planeNormalMapSlot = g_availableTextureSlot; // Save texture slot for the plane
-    g_availableTextureSlot++;
+
+    g_normalTex=loadTextureFromFileToGPU(data/normal.png);
+    g_albedoTex=loadTextureFromFileToGPU(data/color.png);
+    
+    g_normalTexGPU=g_availableTextureSlot;
+    g_availableTextureSlot+=1;
+    glActiveTexture(GL_TEXTURE0+g_normalTexGPU);
+    glBindTexture(GL_TEXTURE_2D, g_normalTex);
+
+    g_normalTexGPU=g_availableTextureSlot;
+    g_availableTextureSlot+=1;
+    glActiveTexture(GL_TEXTURE0+g_albedoTexGPU);
+    glBindTexture(GL_TEXTURE_2D, g_albedoTex);
+
 
   // Store the texture ID in a uniform for shaders
   g_scene.mainShader->use();
