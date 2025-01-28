@@ -71,15 +71,10 @@ float g_appTimer = 0.0;
 float g_appTimerLastColckTime;
 bool g_appTimerStoppedP = true;
 
+
 // TODO: textures
 unsigned int g_availableTextureSlot = 0;
-
-GLuint g_albedoTex;
-unsigned int g_albedoTexGPU;
-
-GLuint g_normalTex;
-unsigned int g_normalTexGPU;
-
+GLuint wallTexture;
 
 GLuint loadTextureFromFileToGPU(const std::string &filename)
 {
@@ -302,18 +297,22 @@ struct Scene {
       mainShader->set(std::string("lightSources[")+std::to_string(i)+std::string("].isActive"), 1);
     }
 
-    // Back-wall (with normal mapping)
-    mainShader->set("material.albedo", glm::vec3(0.29, 0.51, 0.82));
-    mainShader->set("material.normalTex",(int)g_normalTexGPU); 
-    mainShader->set("material.normalTexActive",1);
-    mainShader->set("material.albedoTex",(int)g_albedoTexGPU); 
-    mainShader->set("material.albedoTexActive",1); 
+    // back-wall
+    mainShader->set("material.albedoTexture", 0); // Set texture unit 0 for the back wall
+    mainShader->set("material.hasTexture", 1);    // Indicate that the texture is being used
+    mainShader->set("modelMat", planeMat);
+    mainShader->set("normMat", glm::mat3(glm::inverseTranspose(planeMat)));
+    glActiveTexture(GL_TEXTURE0);                // Activate texture unit 0
+    glBindTexture(GL_TEXTURE_2D, wallTexture); // Bind the back-wall texture
+    plane->render();
+    mainShader->set("material.hasTexture", 0);    // Indicate that the texture is no longer being used
+    /*
+    mainShader->set("material.albedo", glm::vec3(0.29, 0.51, 0.82)); // default value if the texture was not loaded
     mainShader->set("modelMat", planeMat);
     mainShader->set("normMat", glm::mat3(glm::inverseTranspose(planeMat)));
     plane->render();
-    mainShader->set("material.normalTexActive",0);
-    mainShader->set("material.albedoTexActive",0); 
-    
+    */
+
     // floor
     mainShader->set("material.albedo", glm::vec3(0.8, 0.8, 0.9));
     mainShader->set("modelMat", floorMat);
@@ -532,25 +531,12 @@ void initScene(const std::string &meshFilename)
   }
 
   // TODO: Load and setup textures
+  // Load the albedo texture for the back wall
+    wallTexture = loadTextureFromFileToGPU("data/color.png");
+    glActiveTexture(GL_TEXTURE0 + g_availableTextureSlot); // Use the next available texture slot
+    glBindTexture(GL_TEXTURE_2D, wallTexture);
+    g_availableTextureSlot++; // Increment the available texture slot
 
-    g_normalTex=loadTextureFromFileToGPU(data/normal.png);
-    g_albedoTex=loadTextureFromFileToGPU(data/color.png);
-    
-    g_normalTexGPU=g_availableTextureSlot;
-    g_availableTextureSlot+=1;
-    glActiveTexture(GL_TEXTURE0+g_normalTexGPU);
-    glBindTexture(GL_TEXTURE_2D, g_normalTex);
-
-    g_normalTexGPU=g_availableTextureSlot;
-    g_availableTextureSlot+=1;
-    glActiveTexture(GL_TEXTURE0+g_albedoTexGPU);
-    glBindTexture(GL_TEXTURE_2D, g_albedoTex);
-
-
-  // Store the texture ID in a uniform for shaders
-  g_scene.mainShader->use();
-  g_scene.mainShader->set("planeNormalMap", planeNormalMapSlot);
-  g_scene.mainShader->stop();
 
   // Setup lights
   const glm::vec3 pos[3] = {

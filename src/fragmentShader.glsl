@@ -9,17 +9,18 @@ struct LightSource {
 
 int numberOfLights = 3;
 uniform LightSource lightSources[3];
-uniform sampler2D planeNormalMap; // Normal map for the plane only
 // TODO: shadow maps
 
 struct Material {
-  vec3 albedo;
-  // TODO: textures
+    vec3 albedo;
+    sampler2D albedoTexture;
+    int hasTexture;
 };
 
+
 uniform Material material;
+
 uniform vec3 camPos;
-uniform int useNormalMap; // Flag to enable/disable normal mapping
 
 in vec3 fPositionModel;
 in vec3 fPosition;
@@ -32,15 +33,19 @@ float pi = 3.1415927;
 
 // TODO: shadows
 void main() {
-
   vec3 n = normalize(fNormal);
 
-  // TODO: Use normal map only if enabled
-  if (useNormalMap == 1) {
-    vec3 sampledNormal = texture(planeNormalMap, fTexCoord).rgb;
-    sampledNormal = normalize(sampledNormal * 2.0 - 1.0);
-    n = normalize(sampledNormal);
-  }
+  vec3 albedo;
+  if  (material.hasTexture == 1)
+ {
+  albedo=texture(material.albedoTexture, fTexCoord).rgb;
+ }
+ else
+{
+  albedo=material.albedo;
+}  
+
+
 
   vec3 wo = normalize(camPos - fPosition); // unit vector pointing to the camera
 
@@ -50,7 +55,7 @@ void main() {
     if(a_light.isActive == 1) { // consider active lights only
       vec3 wi = normalize(a_light.position - fPosition); // unit vector pointing to the light
       vec3 Li = a_light.color*a_light.intensity;
-      vec3 albedo = material.albedo;
+      //vec3 albedo = material.albedo;
 
       radiance += Li*albedo*max(dot(n, wi), 0);
     }
