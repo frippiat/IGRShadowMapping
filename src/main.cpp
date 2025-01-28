@@ -307,6 +307,26 @@ struct Scene {
 
     mainShader->use();
 
+    // For each light, bind its shadow map and send uniforms:
+for (int i = 0; i < lights.size(); i++) {
+    // 1) Bind the i-th light’s shadow-map texture to the correct texture unit
+    glActiveTexture(GL_TEXTURE0 + lights[i].shadowMapTexOnGPU);
+    glBindTexture(GL_TEXTURE_2D, lights[i].shadowMap.getTextureId());
+
+    // 2) Pass the matrix to the shader
+    // “lightDepthMVP” is declared as an array of mat4 in the fragment shader
+    // e.g. uniform mat4 lightDepthMVP[3];
+    mainShader->set(("lightDepthMVP[" + std::to_string(i) + "]").c_str(),
+                    lights[i].depthMVP);
+
+    // 3) Pass the sampler index to the shader
+    // “shadowMaps” is declared as an array of sampler2D in the fragment shader
+    // e.g. uniform sampler2D shadowMaps[3];
+    mainShader->set(("shadowMaps[" + std::to_string(i) + "]").c_str(),
+                    (int)lights[i].shadowMapTexOnGPU);
+}
+
+
     // camera
     mainShader->set("camPos", g_cam->getPosition());
     mainShader->set("viewMat", g_cam->computeViewMatrix());
