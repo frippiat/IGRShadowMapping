@@ -217,6 +217,28 @@ struct Light {
     const float scene_radius)
   {
     // TODO: compute the MVP matrix from the light's point of view
+    glm::mat4 lightProjection = glm::ortho(
+        -scene_radius, scene_radius,   // fovy
+        -scene_radius, scene_radius,                  // aspect ratio (square for the shadow map)
+        0.1f,                  // near
+        scene_radius * 10.0f   // far (somewhat arbitrary large enough)
+    );
+
+    // 2) Define the view transform from the light’s position, looking at the scene center.
+    //    We assume an up-vector (0,1,0) for convenience:
+    glm::mat4 lightView = glm::lookAt(
+        position,           // light’s position
+        scene_center,       // what the light “looks at”
+        glm::vec3(0, 1, 0)  // up-vector
+    );
+
+    // 3) Multiply them to get the final matrix that transforms world-space points
+    //    into the light’s clip space:
+    depthMVP = lightProjection * lightView;
+
+    // 4) Tell the GPU program (used for shadow-map generation) about depthMVP
+    //    so the vertex shader can transform geometry correctly:
+    shader_shadow_map_Ptr->set("depthMVP", depthMVP);   
   }
 
   void allocateShadowMapFbo(unsigned int w=800, unsigned int h=600)
@@ -265,6 +287,8 @@ struct Scene {
       light.bindShadowMap();
 
       // TODO: render the objects in the scene
+      shadomMapShader->set("modelMat", rhinoMat);
+      rhino->render();
 
       if(saveShadowMapsPpm) {
         light.shadowMap.savePpmFile(std::string("shadom_map_")+std::to_string(i)+std::string(".ppm"));
