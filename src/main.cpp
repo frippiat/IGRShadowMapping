@@ -216,28 +216,22 @@ struct Light {
     const glm::vec3 scene_center,
     const float scene_radius)
   {
-    // TODO: compute the MVP matrix from the light's point of view
     glm::mat4 lightProjection = glm::ortho(
-        -scene_radius, scene_radius,   // fovy
-        -scene_radius, scene_radius,                  // aspect ratio (square for the shadow map)
-        0.1f,                  // near
-        scene_radius * 10.0f   // far (somewhat arbitrary large enough)
+        -scene_radius, scene_radius,  
+        -scene_radius, scene_radius,      
+        0.1f,                  
+        scene_radius * 10.0f  
     );
 
-    // 2) Define the view transform from the light’s position, looking at the scene center.
-    //    We assume an up-vector (0,1,0) for convenience:
     glm::mat4 lightView = glm::lookAt(
-        position,           // light’s position
-        scene_center,       // what the light “looks at”
-        glm::vec3(0, 1, 0)  // up-vector
+        position,          
+        scene_center,       
+        glm::vec3(0, 1, 0)  
     );
 
-    // 3) Multiply them to get the final matrix that transforms world-space points
-    //    into the light’s clip space:
+
     depthMVP = lightProjection * lightView;
 
-    // 4) Tell the GPU program (used for shadow-map generation) about depthMVP
-    //    so the vertex shader can transform geometry correctly:
     shader_shadow_map_Ptr->set("depthMVP", depthMVP);   
   }
 
@@ -276,8 +270,7 @@ struct Scene {
   void render()
   {
 
-    //<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-    // TODO: first, render the shadow maps
+
     glEnable(GL_CULL_FACE);
 
     shadomMapShader->use();
@@ -286,7 +279,6 @@ struct Scene {
       light.setupCameraForShadowMapping(shadomMapShader, scene_center, scene_radius*1.5f);
       light.bindShadowMap();
 
-      // TODO: render the objects in the scene
       shadomMapShader->set("modelMat", rhinoMat);
       rhino->render();
 
@@ -296,32 +288,22 @@ struct Scene {
     }
     shadomMapShader->stop();
     saveShadowMapsPpm = false;
-    //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-
-    //<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-    // TODO: second, render the scene
+    
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
     glViewport(0, 0, g_windowWidth, g_windowHeight);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // Erase the color and z buffers.
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); 
     glCullFace(GL_BACK);
 
     mainShader->use();
 
-    // For each light, bind its shadow map and send uniforms:
 for (int i = 0; i < lights.size(); i++) {
-    // 1) Bind the i-th light’s shadow-map texture to the correct texture unit
+
     glActiveTexture(GL_TEXTURE0 + lights[i].shadowMapTexOnGPU);
     glBindTexture(GL_TEXTURE_2D, lights[i].shadowMap.getTextureId());
 
-    // 2) Pass the matrix to the shader
-    // “lightDepthMVP” is declared as an array of mat4 in the fragment shader
-    // e.g. uniform mat4 lightDepthMVP[3];
     mainShader->set(("lightDepthMVP[" + std::to_string(i) + "]").c_str(),
                     lights[i].depthMVP);
 
-    // 3) Pass the sampler index to the shader
-    // “shadowMaps” is declared as an array of sampler2D in the fragment shader
-    // e.g. uniform sampler2D shadowMaps[3];
     mainShader->set(("shadowMaps[" + std::to_string(i) + "]").c_str(),
                     (int)lights[i].shadowMapTexOnGPU);
 }
@@ -342,14 +324,14 @@ for (int i = 0; i < lights.size(); i++) {
     }
 
     // back-wall
-    mainShader->set("material.albedoTexture", 0); // Set texture unit 0 for the back wall
-    mainShader->set("material.hasTexture", 1);    // Indicate that the texture is being used
+    mainShader->set("material.albedoTexture", 0); 
+    mainShader->set("material.hasTexture", 1);    
     mainShader->set("modelMat", planeMat);
     mainShader->set("normMat", glm::mat3(glm::inverseTranspose(planeMat)));
-    glActiveTexture(GL_TEXTURE0);                // Activate texture unit 0
-    glBindTexture(GL_TEXTURE_2D, wallTexture); // Bind the back-wall texture
+    glActiveTexture(GL_TEXTURE0);                
+    glBindTexture(GL_TEXTURE_2D, wallTexture);
     plane->render();
-    mainShader->set("material.hasTexture", 0);    // Indicate that the texture is no longer being used
+    mainShader->set("material.hasTexture", 0);   
     /*
     mainShader->set("material.albedo", glm::vec3(0.29, 0.51, 0.82)); // default value if the texture was not loaded
     mainShader->set("modelMat", planeMat);
@@ -370,7 +352,6 @@ for (int i = 0; i < lights.size(); i++) {
     rhino->render();
 
     mainShader->stop();
-    //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
   }
 };
 
@@ -574,12 +555,10 @@ void initScene(const std::string &meshFilename)
       glm::rotate(glm::mat4(1.0), (float)(-0.5f*M_PI), glm::vec3(1.0, 0.0, 0.0));
   }
 
-  // TODO: Load and setup textures
-  // Load the albedo texture for the back wall
     wallTexture = loadTextureFromFileToGPU("data/color.png");
-    glActiveTexture(GL_TEXTURE0 + g_availableTextureSlot); // Use the next available texture slot
+    glActiveTexture(GL_TEXTURE0 + g_availableTextureSlot); 
     glBindTexture(GL_TEXTURE_2D, wallTexture);
-    g_availableTextureSlot++; // Increment the available texture slot
+    g_availableTextureSlot++; 
 
 
   // Setup lights
